@@ -13,44 +13,49 @@ import cors from 'cors';
 
 const app = express();
 const port = process.env.PORT || 3777;
+const isVercel = Boolean(process.env.VERCEL);
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+// Health checks
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', service: 'evangadi-ai-forum-api' });
+});
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
+
+// PDF (RAG) upload needs a persistent disk and background workers, which free
+// serverless hosting does not provide. It is switched off in the live demo only.
+if (isVercel) {
+  app.use('/api/rag', (req, res) => {
+    res.status(503).json({
+      status: false,
+      message:
+        'PDF upload is disabled in the live demo. It works when you run the project locally.',
+    });
+  });
+}
 
 app.use('/api', mainRouter);
 
 app.use(errorHandler);
 
-// Start server
+// Start server (only on your own computer; Vercel runs the app by itself)
 const startServer = async () => {
   try {
-    // Test database connection
     const connection = await db.getConnection();
 
     console.log('Database connection established successfully.');
     connection.release();
 
-    // Apply additive schema changes (admin role columns) when missing.
     await ensureAdminSchema();
-
-    // Create the answer voting table when missing.
     await ensureAnswerVotesSchema();
-
-    // Create the answer embedding table when missing.
     await ensureAnswerVectorsSchema();
-
-    // Create the notifications table when missing.
     await ensureNotificationsSchema();
-
-    // Documents stuck in `processing` from a previous run can never finish
-    // (their background job died with the old process). Mark them failed.
     await resetInterruptedDocumentsService();
 
     app.listen(port, err => {
@@ -69,4 +74,8 @@ const startServer = async () => {
   }
 };
 
-startServer();
+if (!isVercel) {
+  startServer();
+}
+
+export default app;
