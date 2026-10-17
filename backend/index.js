@@ -1,3 +1,4 @@
+import './src/polyfills.js';
 import express from 'express';
 import { db } from './db/config.js';
 import { mainRouter } from './src/api/routes.js';
