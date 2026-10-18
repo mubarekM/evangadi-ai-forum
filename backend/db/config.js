@@ -32,6 +32,6 @@ export const safeExecute = async (sql, params) => {
     throw new Error('SQL query must be a non-empty string');
   }
   ensureParams(params);
-  const [result] = await db.execute(sql, params);
+  const [result] = await db.query(sql, params);
   return result;
 };
